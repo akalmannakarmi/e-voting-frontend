@@ -1,6 +1,6 @@
-export default function Card({ children }: { children: React.ReactNode }) {
+export default function Card({ children, className = "" }: any) {
   return (
-    <div className="border p-6 rounded-lg shadow-sm bg-white">
+    <div className={`bg-white rounded-xl border border-gray-300 shadow-lg p-6 ${className}`}>
       {children}
     </div>
   );

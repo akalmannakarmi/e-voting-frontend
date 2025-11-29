@@ -1,10 +1,9 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { fetchVotingChoices, requestCastVote } from "@/lib/api";
+import { useEffect, useState } from "react";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import { fetchVotingChoices, requestCastVote } from "@/lib/api";
 
 export default function CastVotePage() {
   const params = useParams();
@@ -13,62 +12,67 @@ export default function CastVotePage() {
   const [choices, setChoices] = useState<any[]>([]);
   const [choice, setChoice] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!votingId) return;
-
+    setLoading(true);
     fetchVotingChoices(votingId)
-      .then((data) => setChoices(data))
+      .then((data) => setChoices(data || []))
+      .catch((err) => setError(err.message || "Failed to load choices"))
       .finally(() => setLoading(false));
   }, [votingId]);
 
-  async function submit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("voteToken")!;
-    await requestCastVote(votingId, choice, token);
-    window.location.href = `/vote/${votingId}/success`;
-  }
+    setError(null);
+    if (!choice) return setError("Select an option");
+    setBusy(true);
 
-  if (!votingId) {
-    return (
-      <main className="p-8 max-w-md mx-auto">
-        <div className="text-red-600">Invalid voting ID</div>
-      </main>
-    );
-  }
-
-  if (loading) {
-    return (
-      <main className="p-8 max-w-md mx-auto">
-        <div className="text-gray-600">Loading choices…</div>
-      </main>
-    );
+    try {
+      const token = localStorage.getItem("voteToken") || "";
+      const res = await requestCastVote(votingId!, choice, token);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Cast failed");
+      }
+      window.location.href = `/vote/${votingId}/success`;
+    } catch (err: any) {
+      setError(err?.message || "Failed to cast vote");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <main className="p-8 max-w-md mx-auto">
+    <main className="max-w-md mx-auto animate-fadeUp">
       <Card>
-        <h1 className="text-xl font-semibold mb-4">Cast Your Vote</h1>
+        <h2 className="text-2xl font-semibold mb-4">Cast Your Vote</h2>
 
-        <form onSubmit={submit} className="space-y-4">
-          {choices.map((c) => (
-            <label
-              key={c.id}
-              className="flex items-center gap-2 border p-3 rounded cursor-pointer hover:bg-gray-100"
-            >
-              <input
-                type="radio"
-                name="choice"
-                value={c.id}
-                onChange={() => setChoice(c.id)}
-                required
-              />
-              {c.label}
-            </label>
-          ))}
+        {loading && <div className="text-gray-600">Loading choices…</div>}
+        {error && <div className="text-red-600 mb-3">{error}</div>}
 
-          <Button type="submit">Submit Vote</Button>
-        </form>
+        {!loading && (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid gap-3">
+              {choices.map((c: any) => (
+                <label key={c.id} className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3
+                    ${choice === c.id ? 'ring-2 ring-brand-100 bg-brand-50' : 'hover:bg-gray-50'}`}>
+                  <input type="radio" name="choice" value={c.id} checked={choice === c.id} onChange={() => setChoice(c.id)} />
+                  <div>
+                    <div className="font-medium">{c.label}</div>
+                    {c.subtitle && <div className="text-sm text-gray-500">{c.subtitle}</div>}
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={busy}>{busy ? "Submitting..." : "Submit Vote"}</Button>
+            </div>
+          </form>
+        )}
       </Card>
     </main>
   );

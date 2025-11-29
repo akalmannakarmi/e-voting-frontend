@@ -1,10 +1,18 @@
 export default function FormInput({ label, ...props }: any) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+    <div>
+      {label && (
+        <label className="block text-sm font-semibold text-gray-800 mb-2">
+          {label}
+        </label>
+      )}
       <input
         {...props}
-        className="border p-2 rounded w-full focus:ring focus:ring-blue-200 outline-none"
+        className="w-full rounded-md px-3 py-2
+                   border border-gray-400
+                   text-gray-900
+                   focus:outline-none focus:ring-2 focus:ring-[var(--brand-500)]
+                   placeholder-gray-400"
       />
     </div>
   );
